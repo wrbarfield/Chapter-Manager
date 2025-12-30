@@ -21,7 +21,8 @@ const THEME_COLORS = [
 const App: React.FC = () => {
   const [members, setMembers] = useState<Member[]>([]);
   const [chapterLogo, setChapterLogo] = useState<string | null>(null);
-  const [chapterName, setChapterName] = useState<string>("Iron Wings Chapter");
+  const [logoSize, setLogoSize] = useState<number>(48);
+  const [chapterName, setChapterName] = useState<string>("Chapter Name");
   const [activeTab, setActiveTab] = useState<AppTab>('dashboard');
   const [themeColor, setThemeColor] = useState<string>('orange');
   const [themeMode, setThemeMode] = useState<'light' | 'dark'>('dark');
@@ -31,12 +32,14 @@ const App: React.FC = () => {
   useEffect(() => {
     const savedMembers = localStorage.getItem('mc_members');
     const savedLogo = localStorage.getItem('mc_logo');
+    const savedLogoSize = localStorage.getItem('mc_logo_size');
     const savedName = localStorage.getItem('mc_name');
     const savedTheme = localStorage.getItem('mc_theme');
     const savedMode = localStorage.getItem('mc_mode') as 'light' | 'dark';
     
     if (savedMembers) setMembers(JSON.parse(savedMembers));
     if (savedLogo) setChapterLogo(savedLogo);
+    if (savedLogoSize) setLogoSize(parseInt(savedLogoSize, 10));
     if (savedName) setChapterName(savedName);
     if (savedTheme) setThemeColor(savedTheme);
     if (savedMode) setThemeMode(savedMode);
@@ -50,6 +53,10 @@ const App: React.FC = () => {
   useEffect(() => {
     if (chapterLogo) localStorage.setItem('mc_logo', chapterLogo);
   }, [chapterLogo]);
+
+  useEffect(() => {
+    localStorage.setItem('mc_logo_size', logoSize.toString());
+  }, [logoSize]);
 
   useEffect(() => {
     localStorage.setItem('mc_name', chapterName);
@@ -87,7 +94,6 @@ const App: React.FC = () => {
   const handleUpdateAttendance = (memberId: string, year: number, month: number, attended: boolean) => {
     setMembers(prev => prev.map(m => {
       if (m.id === memberId) {
-        // Deep copy the attendance object and the specific year record to avoid mutation
         const newAttendance = { ...m.attendance };
         newAttendance[year] = { ...(newAttendance[year] || {}), [month]: attended };
         return { ...m, attendance: newAttendance };
@@ -98,18 +104,12 @@ const App: React.FC = () => {
 
   const exportToPDF = () => {
     const doc = new jsPDF();
-    
-    // Chapter Title
     doc.setFontSize(22);
     doc.setTextColor(33, 33, 33);
     doc.text(chapterName, 14, 20);
-    
-    // Subtitle
     doc.setFontSize(11);
     doc.setTextColor(100);
     doc.text(`Official Member Roster - Generated on ${new Date().toLocaleDateString()}`, 14, 28);
-    
-    // Stats Summary
     doc.setFontSize(10);
     doc.text(`Total Active Members: ${members.length}`, 14, 34);
 
@@ -129,18 +129,13 @@ const App: React.FC = () => {
       body: tableRows,
       theme: 'striped',
       headStyles: { 
-        fillColor: [30, 41, 59], // Slate 800
+        fillColor: [30, 41, 59],
         textColor: [255, 255, 255],
         fontSize: 10,
         fontStyle: 'bold'
       },
-      styles: {
-        fontSize: 9,
-        cellPadding: 3,
-      },
-      alternateRowStyles: {
-        fillColor: [248, 250, 252], // Slate 50
-      }
+      styles: { fontSize: 9, cellPadding: 3 },
+      alternateRowStyles: { fillColor: [248, 250, 252] }
     });
 
     const fileName = `${chapterName.replace(/\s+/g, '_')}_Members.pdf`;
@@ -153,27 +148,33 @@ const App: React.FC = () => {
     <div className={`min-h-screen pb-20 max-w-lg mx-auto shadow-2xl overflow-hidden relative border-x transition-colors duration-300 ${
       isLight ? 'bg-slate-50 text-slate-900 border-slate-200' : 'bg-slate-900 text-slate-100 border-slate-800'
     }`}>
-      {/* Header */}
-      <header className={`p-4 backdrop-blur-md border-b sticky top-0 z-50 transition-colors duration-300 ${
-        isLight ? 'bg-white/80 border-slate-200' : 'bg-slate-950/80 border-slate-800'
-      }`}>
-        <div className="flex items-center justify-center gap-5">
-          <div className={`w-16 h-16 rounded-xl bg-slate-900/40 flex items-center justify-center shadow-lg transition-colors shrink-0 overflow-hidden`}>
+      {/* Header - Minimum height 80px (matching footer), centered content */}
+      <header className="min-h-20 py-3 bg-black border-b border-slate-800 sticky top-0 z-50 transition-colors duration-300 flex items-center justify-center px-4">
+        <div className="flex flex-row items-center justify-center gap-4 max-w-full">
+          {/* Text on the Left */}
+          <div className="flex flex-col items-end text-right min-w-0">
+            <h1 className={`text-lg md:text-xl font-bold tracking-tight text-${themeColor}-500 transition-colors duration-300 leading-none uppercase break-words`}>
+              {chapterName}
+            </h1>
+            <p className="text-[8px] font-bold tracking-[0.2em] uppercase text-slate-500 mt-1 whitespace-nowrap">
+              Membership & Attendance
+            </p>
+          </div>
+          
+          {/* Resizable Logo - Now scales up to 100px */}
+          <div 
+            className="flex items-center justify-center transition-all shrink-0"
+            style={{ width: `${logoSize}px`, height: `${logoSize}px` }}
+          >
             {chapterLogo ? (
               <img src={chapterLogo} alt="Chapter Logo" className="w-full h-full object-contain" />
             ) : (
-              <svg className="w-10 h-10 text-slate-700" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-              </svg>
+              <div className="bg-slate-900 rounded-lg w-full h-full flex items-center justify-center">
+                <svg className="w-1/2 h-1/2 text-slate-800" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                </svg>
+              </div>
             )}
-          </div>
-          <div className="text-left">
-            <h1 className={`text-xl font-bold tracking-tight text-${themeColor}-500 transition-colors duration-300 leading-tight`}>
-              {chapterName}
-            </h1>
-            <p className={`text-[9px] font-bold tracking-[0.2em] uppercase transition-colors ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-              Membership & Attendance
-            </p>
           </div>
         </div>
       </header>
@@ -261,10 +262,33 @@ const App: React.FC = () => {
                 Chapter Settings
               </h2>
               <div className="space-y-6">
-                {/* Logo Selection Section */}
+                {/* Logo Section */}
                 <div className="flex flex-col items-center justify-center p-4 border-b border-slate-700/30 mb-2">
                   <label className={`block text-xs font-bold uppercase mb-4 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Chapter Logo</label>
                   <LogoSection logo={chapterLogo} onLogoChange={setChapterLogo} themeColor={themeColor} />
+                  
+                  {/* Logo Scale Slider - Range increased to 100px */}
+                  <div className="w-full max-w-xs mt-6 px-2">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Logo Scale</span>
+                      <span className={`text-[10px] font-mono font-bold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>{logoSize}px</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="32" 
+                      max="100" 
+                      value={logoSize} 
+                      onChange={(e) => setLogoSize(parseInt(e.target.value, 10))}
+                      className={`w-full h-1.5 rounded-lg appearance-none cursor-pointer ${isLight ? 'bg-slate-200' : 'bg-slate-700'}`}
+                      style={{
+                        accentColor: themeColor === 'orange' ? '#f97316' : 
+                                     themeColor === 'red' ? '#ef4444' : 
+                                     themeColor === 'blue' ? '#3b82f6' : 
+                                     themeColor === 'emerald' ? '#10b981' : 
+                                     themeColor === 'purple' ? '#a855f7' : '#f59e0b'
+                      }}
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -279,7 +303,6 @@ const App: React.FC = () => {
                   />
                 </div>
 
-                {/* Theme Mode Selector */}
                 <div>
                   <label className={`block text-xs font-bold uppercase mb-2 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Display Mode</label>
                   <div className={`flex p-1 rounded-xl border ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900 border-slate-700'}`}>
@@ -328,7 +351,6 @@ const App: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Update & Return Button */}
                 <div className="pt-4">
                   <button 
                     onClick={() => setActiveTab('dashboard')}
@@ -346,10 +368,8 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* Bottom Navigation */}
-      <nav className={`fixed bottom-0 left-0 right-0 max-w-lg mx-auto backdrop-blur-xl border-t flex justify-around p-3 pb-6 z-50 transition-colors duration-300 ${
-        isLight ? 'bg-white/90 border-slate-200' : 'bg-slate-950/90 border-slate-800'
-      }`}>
+      {/* Bottom Navigation - Fixed height exactly 80px (h-20) */}
+      <nav className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto backdrop-blur-xl border-t border-slate-800 bg-black flex justify-around items-center h-20 z-50 transition-colors duration-300">
         <button 
           onClick={() => setActiveTab('dashboard')}
           className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'dashboard' ? `text-${themeColor}-500` : 'text-slate-500'}`}
